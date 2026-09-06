@@ -1,0 +1,177 @@
+import { MonthList, Profile, NotificationSettings, ListItem, MAX_ITEMS } from "./types";
+import { monthKey } from "./date";
+import { idbSet } from "./idb";
+
+// -----------------------------------------------------------------------
+// Data-layer abstraction. Everything the app reads/writes goes through this
+// module. v1 implements it on top of localStorage; a future cross-device
+// sync version (e.g. Supabase free tier) can swap the implementation below
+// without touching any component code, as long as it keeps this same shape.
+// -----------------------------------------------------------------------
+
+const KEYS = {
+  months: "monthly10s:months", // { [monthKey]: MonthList }
+  profile: "monthly10s:profile",
+  notifications: "monthly10s:notifications",
+};
+
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+function readJson<T>(key: string, fallback: T): T {
+  if (!isBrowser()) return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJson<T>(key: string, value: T): void {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // storage full or unavailable — fail silently, it's a local convenience store
+  }
+}
+
+function uid(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// ---- Months / lists ----
+
+type MonthsMap = Record<string, MonthList>;
+
+export function getAllMonths(): MonthsMap {
+  return readJson<MonthsMap>(KEYS.months, {});
+}
+
+export function getMonth(key: string): MonthList {
+  const months = getAllMonths();
+  return (
+    months[key] || {
+      monthKey: key,
+      items: [],
+      updatedAt: new Date().toISOString(),
+    }
+  );
+}
+
+export function getCurrentMonth(): MonthList {
+  return getMonth(monthKey());
+}
+
+function saveMonth(list: MonthList): void {
+  const months = getAllMonths();
+  months[list.monthKey] = { ...list, updatedAt: new Date().toISOString() };
+  writeJson(KEYS.months, months);
+}
+
+export function addItem(monthKeyStr: string, text: string, ideaId?: string): MonthList {
+  const list = getMonth(monthKeyStr);
+  const trimmed = text.trim();
+  if (!trimmed || list.items.length >= MAX_ITEMS) return list;
+  const item: ListItem = {
+    id: uid(),
+    text: trimmed,
+    done: false,
+    createdAt: new Date().toISOString(),
+    ideaId,
+  };
+  const updated: MonthList = { ...list, items: [...list.items, item] };
+  saveMonth(updated);
+  return updated;
+}
+
+export function updateItemText(monthKeyStr: string, itemId: string, text: string): MonthList {
+  const list = getMonth(monthKeyStr);
+  const updated: MonthList = {
+    ...list,
+    items: list.items.map((it) => (it.id === itemId ? { ...it, text } : it)),
+  };
+  saveMonth(updated);
+  return updated;
+}
+
+export function toggleItem(monthKeyStr: string, itemId: string): MonthList {
+  const list = getMonth(monthKeyStr);
+  const updated: MonthList = {
+    ...list,
+    items: list.items.map((it) => (it.id === itemId ? { ...it, done: !it.done } : it)),
+  };
+  saveMonth(updated);
+  return updated;
+}
+
+export function deleteItem(monthKeyStr: string, itemId: string): MonthList {
+  const list = getMonth(monthKeyStr);
+  const updated: MonthList = { ...list, items: list.items.filter((it) => it.id !== itemId) };
+  saveMonth(updated);
+  return updated;
+}
+
+export function reorderItems(monthKeyStr: string, orderedIds: string[]): MonthList {
+  const list = getMonth(monthKeyStr);
+  const byId = new Map(list.items.map((it) => [it.id, it]));
+  const items = orderedIds.map((id) => byId.get(id)).filter((x): x is ListItem => !!x);
+  const updated: MonthList = { ...list, items };
+  saveMonth(updated);
+  return updated;
+}
+
+/** Past months only, newest first, excluding the empty current month if untouched. */
+export function getArchive(): MonthList[] {
+  const months = getAllMonths();
+  const current = monthKey();
+  return Object.values(months)
+    .filter((m) => m.monthKey !== current && m.items.length > 0)
+    .sort((a, b) => (a.monthKey < b.monthKey ? 1 : -1));
+}
+
+// ---- Profile ----
+
+const emptyProfile: Profile = { onboardingComplete: false };
+
+export function getProfile(): Profile {
+  return readJson<Profile>(KEYS.profile, emptyProfile);
+}
+
+export function saveProfile(profile: Profile): void {
+  writeJson(KEYS.profile, profile);
+}
+
+export function resetProfile(): void {
+  writeJson(KEYS.profile, emptyProfile);
+}
+
+// ---- Notification settings ----
+
+const defaultNotificationSettings: NotificationSettings = {
+  remindersEnabled: false,
+  reminderDay: 1,
+  midMonthNudge: false,
+  midMonthDay: 15,
+};
+
+export function getNotificationSettings(): NotificationSettings {
+  return readJson<NotificationSettings>(KEYS.notifications, defaultNotificationSettings);
+}
+
+export function saveNotificationSettings(settings: NotificationSettings): void {
+  writeJson(KEYS.notifications, settings);
+  // Mirror into IndexedDB so the service worker (no localStorage access) can
+  // read it during a periodic background sync check.
+  void idbSet("settings", settings);
+}
+
+export function clearAllData(): void {
+  if (!isBrowser()) return;
+  window.localStorage.removeItem(KEYS.months);
+  window.localStorage.removeItem(KEYS.profile);
+  window.localStorage.removeItem(KEYS.notifications);
+}

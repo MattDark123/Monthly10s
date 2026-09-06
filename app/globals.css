@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  overscroll-behavior-y: contain;
+}
+
+body {
+  background-color: #fff8f0;
+  color: #2b2320;
+}
+
+/* Big, forgiving tap targets everywhere by default */
+button,
+[role="button"],
+input[type="checkbox"] {
+  touch-action: manipulation;
+}
+
+::selection {
+  background-color: #ffd8b8;
+}
