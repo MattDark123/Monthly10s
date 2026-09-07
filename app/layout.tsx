@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import SyncBootstrap from "@/components/SyncBootstrap";
 import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen bg-bg font-sans text-fg">
         <ServiceWorkerRegistration />
+        <SyncBootstrap />
         <main className="safe-top mx-auto flex min-h-screen w-full max-w-md flex-col px-6 pb-28">
           {children}
         </main>

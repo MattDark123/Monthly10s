@@ -5,6 +5,7 @@ import {
   ListItem,
   Category,
   Preferences,
+  Identity,
   MAX_ITEMS,
 } from "./types";
 import { monthKey } from "./date";
@@ -22,6 +23,7 @@ const KEYS = {
   profile: "monthly10s:profile",
   notifications: "monthly10s:notifications",
   prefs: "monthly10s:prefs",
+  identity: "monthly10s:identity",
 };
 
 function isBrowser() {
@@ -75,10 +77,22 @@ export function getCurrentMonth(): MonthList {
   return getMonth(monthKey());
 }
 
+type MonthListener = (list: MonthList) => void;
+const monthListeners = new Set<MonthListener>();
+
+/** Be told whenever a month is written. Used by the optional sync layer so
+ * this module never has to know about any backend. */
+export function onMonthSaved(cb: MonthListener): () => void {
+  monthListeners.add(cb);
+  return () => monthListeners.delete(cb);
+}
+
 function saveMonth(list: MonthList): void {
   const months = getAllMonths();
-  months[list.monthKey] = { ...list, updatedAt: new Date().toISOString() };
+  const saved = { ...list, updatedAt: new Date().toISOString() };
+  months[list.monthKey] = saved;
   writeJson(KEYS.months, months);
+  monthListeners.forEach((cb) => cb(saved));
 }
 
 export function addItem(monthKeyStr: string, text: string, ideaId?: string): MonthList {
@@ -257,10 +271,23 @@ export function savePreferences(prefs: Preferences): void {
   writeJson(KEYS.prefs, prefs);
 }
 
+// ---- Identity (for sharing) ----
+
+const defaultIdentity: Identity = { name: "", sharingEnabled: false };
+
+export function getIdentity(): Identity {
+  return { ...defaultIdentity, ...readJson<Partial<Identity>>(KEYS.identity, {}) };
+}
+
+export function saveIdentity(identity: Identity): void {
+  writeJson(KEYS.identity, identity);
+}
+
 export function clearAllData(): void {
   if (!isBrowser()) return;
   window.localStorage.removeItem(KEYS.months);
   window.localStorage.removeItem(KEYS.profile);
   window.localStorage.removeItem(KEYS.notifications);
   window.localStorage.removeItem(KEYS.prefs);
+  window.localStorage.removeItem(KEYS.identity);
 }

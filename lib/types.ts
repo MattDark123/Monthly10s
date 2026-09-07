@@ -66,6 +66,13 @@ export interface Preferences {
   rollover: Rollover;
 }
 
+/** Local identity for sharing. Name is the only thing friends ever see. */
+export interface Identity {
+  name: string;
+  /** True once the user has shared with someone; only then do months leave the device. */
+  sharingEnabled: boolean;
+}
+
 export const MAX_ITEMS = 10;
 /** Item tiles on the bingo card (3x3 minus the free centre square). */
 export const CARD_SLOTS = 8;

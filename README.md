@@ -46,6 +46,45 @@ login, no backend, no cost.
   setting, respects iOS safe areas when installed, and honours
   `prefers-reduced-motion`.
 
+## Sharing with friends (optional, still free)
+
+Everything above works with no backend at all. Sharing a list with a
+friend, and seeing theirs, needs somewhere for the two phones to meet, so
+it's an **opt-in add-on** on Supabase's free tier. Leave it unconfigured and
+the Friends tab simply explains that sharing is off; nothing else changes.
+
+How it behaves once it's on:
+
+- Each device signs in **anonymously** — no email, no password, nothing to
+  remember. The only thing a friend ever sees about you is the name you
+  type.
+- Nothing is uploaded until you share with someone. "Share with a friend"
+  makes a link that works for 30 days. Opening it shows your name and two
+  choices: *see yours and share theirs back*, or *just see yours*.
+- The Friends tab shows each friend's progress and items for the current
+  month, if they share, and has a switch per friend for whether they can
+  see yours. Settings has "stop sharing with everyone", which also deletes
+  what you'd uploaded.
+- Access is enforced in the database by row-level security
+  (`supabase/schema.sql`), not just in the app.
+
+Setting it up (about five minutes):
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. In the project, open **SQL Editor**, paste the contents of
+   `supabase/schema.sql`, and run it.
+3. Open **Authentication → Providers**, find **Anonymous**, and enable it.
+4. Open **Settings → API** and copy the **Project URL** and the **anon
+   public** key.
+5. In Vercel, open your project's **Settings → Environment Variables** and
+   add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` with
+   those values (for local dev, copy `.env.example` to `.env.local`).
+6. Redeploy. The Friends tab is now live.
+
+Free-tier caveat worth knowing: Supabase pauses a free project after about
+a week with no activity. The app keeps working locally regardless; sharing
+resumes as soon as you restore the project from the Supabase dashboard.
+
 ## Local dev setup
 
 Requires Node 18+.
@@ -156,8 +195,10 @@ usage:
 
 There are no hidden costs anywhere in this stack.
 
-## Explicitly out of scope (v1)
+## Explicitly out of scope
 
-Accounts/login, social sharing, cloud sync, streak-shaming stats, and any
-paid geocoding/maps/weather APIs. See "How notification scheduling works"
+Accounts with passwords, cloud sync of your own list across devices,
+streak-shaming stats, and any paid geocoding/maps/weather APIs. (Sharing
+with friends is covered above and uses anonymous sign-in rather than
+accounts.) See "How notification scheduling works"
 above for why push-server-backed notifications aren't included either.

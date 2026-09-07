@@ -9,9 +9,11 @@ import {
   saveNotificationSettings,
   getPreferences,
   savePreferences,
+  getIdentity,
   clearAllData,
 } from "@/lib/storage";
-import { Profile, NotificationSettings, Preferences, Layout, Rollover } from "@/lib/types";
+import { sharingConfigured, saveName, stopSharingAll, signOutSharing } from "@/lib/sync";
+import { Profile, NotificationSettings, Preferences, Layout, Rollover, Identity } from "@/lib/types";
 import {
   notificationPermission,
   notificationsSupported,
@@ -33,6 +35,8 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [notif, setNotif] = useState<NotificationSettings | null>(null);
   const [prefs, setPrefs] = useState<Preferences | null>(null);
+  const [identity, setIdentity] = useState<Identity>({ name: "", sharingEnabled: false });
+  const [nameDraft, setNameDraft] = useState("");
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const [editing, setEditing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -41,6 +45,9 @@ export default function SettingsPage() {
     setProfile(getProfile());
     setNotif(getNotificationSettings());
     setPrefs(getPreferences());
+    const id = getIdentity();
+    setIdentity(id);
+    setNameDraft(id.name);
     setPermission(notificationPermission());
   }, []);
 
@@ -170,6 +177,52 @@ export default function SettingsPage() {
         )}
       </Section>
 
+      <Section
+        title="Sharing"
+        caption={sharingConfigured() ? "Friends only ever see your name and the list you choose to share." : undefined}
+      >
+        {!sharingConfigured() && (
+          <Note>Not switched on for this copy of the app. The README explains how to enable it for free.</Note>
+        )}
+        {sharingConfigured() && (
+          <>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <span className="text-[17px]">Your name</span>
+              <input
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={() => nameDraft.trim() !== identity.name && void saveName(nameDraft).then(() => setIdentity(getIdentity()))}
+                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                maxLength={40}
+                placeholder="Not set"
+                aria-label="Your name"
+                className="w-40 border-b border-line bg-transparent py-1 text-right text-[17px] outline-none focus:border-fg/40"
+              />
+            </div>
+            <div className="py-4">
+              <p className="text-[17px]">{identity.sharingEnabled ? "Your list is shared" : "Nothing has left this device"}</p>
+              <p className="mt-0.5 text-sm text-muted">
+                {identity.sharingEnabled
+                  ? "Only with the friends you've chosen. Manage each one under Friends."
+                  : "Share a link from Friends whenever you like."}
+              </p>
+              {identity.sharingEnabled && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await stopSharingAll();
+                    setIdentity(getIdentity());
+                  }}
+                  className="mt-3 text-sm font-medium text-accent"
+                >
+                  Stop sharing with everyone
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </Section>
+
       <Section title="Data" caption="Lists, archive and preferences live only on this device.">
         {!confirmClear ? (
           <button
@@ -192,11 +245,15 @@ export default function SettingsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
+                  if (getIdentity().sharingEnabled) await stopSharingAll();
+                  await signOutSharing();
                   clearAllData();
                   setProfile(getProfile());
                   setNotif(getNotificationSettings());
                   setPrefs(getPreferences());
+                  setIdentity(getIdentity());
+                  setNameDraft("");
                   setConfirmClear(false);
                 }}
                 className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white"
