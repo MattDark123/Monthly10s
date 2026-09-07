@@ -151,6 +151,54 @@ export function setItemCategory(
   return updated;
 }
 
+export function markRolloverHandled(monthKeyStr: string): void {
+  const list = getMonth(monthKeyStr);
+  saveMonth({ ...list, rolloverHandled: true });
+}
+
+/**
+ * Copy the chosen unfinished items from one month onto another as fresh,
+ * unticked items. Skips anything already on the target list (by text) and
+ * stops at the ten-item cap. The source month is left exactly as it was,
+ * so the archive stays honest, and is marked as handled.
+ */
+export function carryItems(
+  fromKey: string,
+  toKey: string,
+  itemIds: string[]
+): { added: number; skipped: number } {
+  const from = getMonth(fromKey);
+  const to = getMonth(toKey);
+  const norm = (s: string) => s.trim().toLowerCase();
+  const existing = new Set(to.items.map((i) => norm(i.text)));
+  const items = [...to.items];
+  let added = 0;
+  let skipped = 0;
+
+  for (const it of from.items) {
+    if (it.done || !itemIds.includes(it.id)) continue;
+    if (items.length >= MAX_ITEMS || existing.has(norm(it.text))) {
+      skipped += 1;
+      continue;
+    }
+    items.push({
+      id: uid(),
+      text: it.text,
+      done: false,
+      createdAt: new Date().toISOString(),
+      ideaId: it.ideaId,
+      category: it.category,
+      carriedFrom: fromKey,
+    });
+    existing.add(norm(it.text));
+    added += 1;
+  }
+
+  saveMonth({ ...to, items });
+  saveMonth({ ...from, rolloverHandled: true });
+  return { added, skipped };
+}
+
 /** Past months only (strictly before the current one), newest first.
  * A month planned ahead of time is not archive material. */
 export function getArchive(): MonthList[] {
@@ -199,7 +247,7 @@ export function saveNotificationSettings(settings: NotificationSettings): void {
 
 // ---- Preferences (layout etc.) ----
 
-const defaultPreferences: Preferences = { layout: "list" };
+const defaultPreferences: Preferences = { layout: "list", rollover: "auto" };
 
 export function getPreferences(): Preferences {
   return { ...defaultPreferences, ...readJson<Partial<Preferences>>(KEYS.prefs, {}) };
