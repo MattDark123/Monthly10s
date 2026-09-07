@@ -20,8 +20,16 @@ login, no backend, no cost.
   blocks a manually typed item and is never sent anywhere.
 - A new-month banner + a real local notification, plus one optional
   mid-month nudge (never more).
-- An archive of past months, framed positively ("You did 6 of these — nice
-  month").
+- Plan next month from inside this one: a small switch on the Month tab
+  opens next month's list, and it simply becomes the current list when the
+  month rolls over.
+- A "Look back" tab: past months as they were, plus gentle insights — how
+  many things you do in a typical month, and a per-theme breakdown showing
+  which kinds of things you lean toward, which reliably happen, and which
+  tend to slip.
+- Themes (social, active, food, nature, explore, learning, creative, rest,
+  play) are detected on-device by a small keyword classifier — no API — and
+  you can override any item's theme while editing it.
 - Installable to the home screen on iOS and Android, and fully usable
   offline after first load.
 - Minimal, one-accent interface that follows the system light/dark

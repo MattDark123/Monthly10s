@@ -10,18 +10,21 @@ export default function IdeaShuffleButton({
   profile,
   usedIdeaIds,
   disabled,
+  forDate,
   onPick,
 }: {
   profile: Profile | undefined;
   usedIdeaIds: string[];
   disabled: boolean;
+  /** month the ideas are for — steers season weighting when planning ahead */
+  forDate?: Date;
   onPick: (idea: Idea) => void;
 }) {
   const [suggestion, setSuggestion] = useState<Idea | null>(null);
   const [seen, setSeen] = useState<string[]>([]);
 
   function shuffle() {
-    const idea = pickIdea(profile, [...usedIdeaIds, ...seen]);
+    const idea = pickIdea(profile, [...usedIdeaIds, ...seen], forDate);
     if (idea) setSeen((s) => [...s.slice(-20), idea.id]);
     setSuggestion(idea ?? null);
   }

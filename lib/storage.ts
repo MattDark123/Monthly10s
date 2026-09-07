@@ -1,4 +1,4 @@
-import { MonthList, Profile, NotificationSettings, ListItem, MAX_ITEMS } from "./types";
+import { MonthList, Profile, NotificationSettings, ListItem, Category, MAX_ITEMS } from "./types";
 import { monthKey } from "./date";
 import { idbSet } from "./idb";
 
@@ -124,12 +124,31 @@ export function reorderItems(monthKeyStr: string, orderedIds: string[]): MonthLi
   return updated;
 }
 
-/** Past months only, newest first, excluding the empty current month if untouched. */
+export function setItemCategory(
+  monthKeyStr: string,
+  itemId: string,
+  category: Category | undefined
+): MonthList {
+  const list = getMonth(monthKeyStr);
+  const updated: MonthList = {
+    ...list,
+    items: list.items.map((it) => {
+      if (it.id !== itemId) return it;
+      const { category: _old, ...rest } = it;
+      return category ? { ...rest, category } : rest;
+    }),
+  };
+  saveMonth(updated);
+  return updated;
+}
+
+/** Past months only (strictly before the current one), newest first.
+ * A month planned ahead of time is not archive material. */
 export function getArchive(): MonthList[] {
   const months = getAllMonths();
   const current = monthKey();
   return Object.values(months)
-    .filter((m) => m.monthKey !== current && m.items.length > 0)
+    .filter((m) => m.monthKey < current && m.items.length > 0)
     .sort((a, b) => (a.monthKey < b.monthKey ? 1 : -1));
 }
 

@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  getCurrentMonth,
+  getMonth,
   getProfile,
   saveProfile,
   addItem,
   toggleItem,
   updateItemText,
   deleteItem,
+  setItemCategory,
   getArchive,
 } from "@/lib/storage";
 import {
@@ -19,7 +20,7 @@ import {
   dismissMidMonthBanner,
 } from "@/lib/notifications";
 import { MonthList, Profile, MAX_ITEMS } from "@/lib/types";
-import { monthKey } from "@/lib/date";
+import { monthKey, monthName, nextMonthKey, monthDate } from "@/lib/date";
 import { Idea } from "@/lib/ideas";
 import ListItemRow from "@/components/ListItemRow";
 import AddItemRow from "@/components/AddItemRow";
@@ -27,11 +28,6 @@ import ProgressDots from "@/components/ProgressDots";
 import IdeaShuffleButton from "@/components/IdeaShuffleButton";
 import ReminderBanner from "@/components/ReminderBanner";
 import OnboardingFlow from "@/components/OnboardingFlow";
-
-function monthName(key: string) {
-  const [y, m] = key.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long" });
-}
 
 function doneLine(done: number, total: number): string | null {
   if (total === 0) return null;
@@ -43,15 +39,27 @@ function doneLine(done: number, total: number): string | null {
   return "Off to a start.";
 }
 
+function planLine(count: number): string {
+  if (count === 0) return "Lining things up ahead of time.";
+  if (count >= MAX_ITEMS) return "Ten lined up. That's the lot.";
+  return `${count} lined up so far.`;
+}
+
+type View = "current" | "next";
+
 export default function HomePage() {
+  const [view, setView] = useState<View>("current");
   const [list, setList] = useState<MonthList | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [hasArchive, setHasArchive] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [banner, setBanner] = useState<"new" | "mid" | null>(null);
 
+  const currentKey = monthKey();
+  const nextKey = nextMonthKey(currentKey);
+  const key = view === "current" ? currentKey : nextKey;
+
   useEffect(() => {
-    setList(getCurrentMonth());
     const p = getProfile();
     setProfile(p);
     setShowOnboarding(!p.onboardingComplete);
@@ -60,13 +68,17 @@ export default function HomePage() {
     else if (shouldShowMidMonthBanner()) setBanner("mid");
   }, []);
 
+  useEffect(() => {
+    setList(getMonth(key));
+  }, [key]);
+
   if (!list || !profile) return null;
 
-  const key = monthKey();
+  const isPlan = view === "next";
   const done = list.items.filter((i) => i.done).length;
   const full = list.items.length >= MAX_ITEMS;
   const usedIdeaIds = list.items.map((i) => i.ideaId).filter((x): x is string => !!x);
-  const subtitle = doneLine(done, list.items.length);
+  const subtitle = isPlan ? planLine(list.items.length) : doneLine(done, list.items.length);
 
   function finishOnboarding(p: Profile) {
     saveProfile(p);
@@ -88,24 +100,41 @@ export default function HomePage() {
       )}
 
       <header className="pb-6 pt-10">
-        <h1 className="text-[34px] font-semibold leading-none tracking-tight">{monthName(key)}</h1>
+        <div className="flex items-baseline justify-between gap-4">
+          <h1 key={key} className="animate-fade-in text-[34px] font-semibold leading-none tracking-tight">
+            {monthName(key)}
+          </h1>
+          <button
+            type="button"
+            onClick={() => setView(isPlan ? "current" : "next")}
+            className="shrink-0 text-[15px] font-medium text-accent transition-opacity active:opacity-60"
+          >
+            {isPlan ? `← ${monthName(currentKey)}` : `${monthName(nextKey)} →`}
+          </button>
+        </div>
         <div className="mt-4 flex items-center justify-between gap-4">
           <p className="text-[15px] text-muted">{subtitle ?? "Ten small things, no pressure."}</p>
-          <ProgressDots done={done} total={list.items.length} />
+          {!isPlan && <ProgressDots done={done} total={list.items.length} />}
         </div>
       </header>
 
-      {banner === "new" && (
+      {!isPlan && banner === "new" && (
         <ReminderBanner
           title="A fresh month"
-          body="Jot down a few things you'd like to do. Ten is the cap, not the goal."
+          body={
+            list.items.length > 0
+              ? `You lined up ${list.items.length} ${list.items.length === 1 ? "thing" : "things"} for ${monthName(
+                  currentKey
+                )}. Here they are.`
+              : "Jot down a few things you'd like to do. Ten is the cap, not the goal."
+          }
           onDismiss={() => {
             dismissNewMonthBanner();
             setBanner(null);
           }}
         />
       )}
-      {banner === "mid" && (
+      {!isPlan && banner === "mid" && (
         <ReminderBanner
           title="Halfway there"
           body="Just a nudge to peek at your list. Nothing's overdue."
@@ -117,13 +146,16 @@ export default function HomePage() {
       )}
 
       <ul className="border-t border-line">
-        {list.items.map((item) => (
+        {list.items.map((item, i) => (
           <ListItemRow
             key={item.id}
             item={item}
+            index={i}
+            mode={isPlan ? "plan" : "current"}
             onToggle={() => setList(toggleItem(key, item.id))}
             onEdit={(text) => setList(updateItemText(key, item.id, text))}
             onDelete={() => setList(deleteItem(key, item.id))}
+            onCategory={(c) => setList(setItemCategory(key, item.id, c))}
           />
         ))}
         <li className={full ? "" : "border-b border-line"}>
@@ -132,17 +164,33 @@ export default function HomePage() {
       </ul>
 
       <div className="mt-3">
-        <IdeaShuffleButton profile={profile} usedIdeaIds={usedIdeaIds} disabled={full} onPick={addIdea} />
+        <IdeaShuffleButton
+          profile={profile}
+          usedIdeaIds={usedIdeaIds}
+          disabled={full}
+          forDate={monthDate(key)}
+          onPick={addIdea}
+        />
       </div>
 
       {list.items.length === 0 && (
         <div className="mt-14 text-center">
           <p className="text-[15px] leading-relaxed text-muted">
-            Try a recipe. Call someone. Watch a sunrise.
-            <br />
-            Skipping any of them costs nothing.
+            {isPlan ? (
+              <>
+                Anything you add here becomes
+                <br />
+                {monthName(nextKey)}&apos;s list when it arrives.
+              </>
+            ) : (
+              <>
+                Try a recipe. Call someone. Watch a sunrise.
+                <br />
+                Skipping any of them costs nothing.
+              </>
+            )}
           </p>
-          {hasArchive && (
+          {!isPlan && hasArchive && (
             <Link href="/archive" className="mt-4 inline-block text-[15px] font-medium text-accent">
               See last month
             </Link>

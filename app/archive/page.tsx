@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { getArchive } from "@/lib/storage";
 import { MonthList } from "@/lib/types";
 import { monthLabel } from "@/lib/date";
+import { computeInsights, Insights as InsightsData } from "@/lib/stats";
+import { categoryLabel, categoryOf } from "@/lib/categories";
+import Insights from "@/components/Insights";
 import { ChevronIcon, CheckIcon } from "@/components/Icons";
 
 function positiveLine(done: number, total: number): string {
@@ -14,24 +17,34 @@ function positiveLine(done: number, total: number): string {
 
 export default function ArchivePage() {
   const [months, setMonths] = useState<MonthList[] | null>(null);
+  const [insights, setInsights] = useState<InsightsData | null>(null);
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   useEffect(() => {
     const m = getArchive();
     setMonths(m);
+    setInsights(computeInsights(m));
     setOpenKey(m[0]?.monthKey ?? null);
   }, []);
 
-  if (!months) return null;
+  if (!months || !insights) return null;
 
   return (
     <>
       <header className="pb-6 pt-10">
-        <h1 className="text-[34px] font-semibold leading-none tracking-tight">Archive</h1>
+        <h1 className="text-[34px] font-semibold leading-none tracking-tight">Look back</h1>
         <p className="mt-4 text-[15px] text-muted">
-          {months.length === 0 ? "Past months will collect here." : "Every month, kept as it was."}
+          {months.length === 0
+            ? "Past months, and what they add up to, will collect here."
+            : "Every month, kept as it was."}
         </p>
       </header>
+
+      <Insights data={insights} />
+
+      {months.length > 0 && (
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Months</h2>
+      )}
 
       <ul className="border-t border-line">
         {months.map((m) => {
@@ -66,7 +79,10 @@ export default function ArchivePage() {
                       >
                         {item.done && <CheckIcon size={11} />}
                       </span>
-                      <span className={`text-[15px] ${item.done ? "text-fg" : "text-muted"}`}>{item.text}</span>
+                      <span className={`min-w-0 flex-1 text-[15px] ${item.done ? "text-fg" : "text-muted"}`}>
+                        {item.text}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted/70">{categoryLabel(categoryOf(item))}</span>
                     </li>
                   ))}
                 </ul>
