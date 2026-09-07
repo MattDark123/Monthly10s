@@ -1,3 +1,5 @@
+import { CloseIcon } from "./Icons";
+
 export default function ReminderBanner({
   title,
   body,
@@ -8,14 +10,18 @@ export default function ReminderBanner({
   onDismiss: () => void;
 }) {
   return (
-    <div className="animate-fade-in mb-4 flex items-start gap-3 rounded-2xl bg-coral/10 p-4">
-      <span className="text-xl">✨</span>
+    <div className="animate-fade-up mb-6 flex items-start gap-3 rounded-2xl border border-line bg-card p-4">
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-ink">{title}</p>
-        <p className="text-sm text-ink/70">{body}</p>
+        <p className="text-[15px] font-semibold">{title}</p>
+        <p className="mt-0.5 text-sm text-muted">{body}</p>
       </div>
-      <button onClick={onDismiss} className="shrink-0 text-lg text-ink/40" aria-label="Dismiss">
-        ×
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        className="-mr-1 -mt-1 shrink-0 p-1 text-muted"
+      >
+        <CloseIcon size={18} />
       </button>
     </div>
   );

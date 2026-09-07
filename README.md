@@ -24,6 +24,9 @@ login, no backend, no cost.
   month").
 - Installable to the home screen on iOS and Android, and fully usable
   offline after first load.
+- Minimal, one-accent interface that follows the system light/dark
+  setting, respects iOS safe areas when installed, and honours
+  `prefers-reduced-motion`.
 
 ## Local dev setup
 

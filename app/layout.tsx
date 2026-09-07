@@ -5,11 +5,11 @@ import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
   title: "Monthly 10s",
-  description: "Ten low-stakes things to do this month. No streaks, no guilt.",
+  description: "Ten small things to do this month. No streaks, no guilt.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "Monthly 10s",
   },
   icons: {
@@ -26,15 +26,20 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#FF8C42",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAF9F7" },
+    { media: "(prefers-color-scheme: dark)", color: "#121110" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-cream text-ink font-display">
+      <body className="min-h-screen bg-bg font-sans text-fg">
         <ServiceWorkerRegistration />
-        <div className="mx-auto flex min-h-screen max-w-md flex-col pb-20">{children}</div>
+        <main className="safe-top mx-auto flex min-h-screen w-full max-w-md flex-col px-6 pb-28">
+          {children}
+        </main>
         <BottomNav />
       </body>
     </html>
