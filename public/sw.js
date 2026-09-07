@@ -14,8 +14,8 @@
 // the in-app banner shown on next open, plus a notification fired the moment
 // the app is opened on/after the reminder day.
 
-const CACHE_NAME = "monthly10s-shell-v1";
-const APP_SHELL = ["/", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE_NAME = "monthly10s-shell-v2";
+const APP_SHELL = ["/", "/archive", "/settings", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -33,18 +33,38 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Strategy:
+//  - Navigations (HTML): network-first, fall back to cache. Keeps the page
+//    in step with the JS chunks it references after a deploy, while still
+//    loading offline.
+//  - Everything else same-origin (hashed /_next/static assets, icons):
+//    cache-first, refresh in the background.
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
+  const { request } = event;
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
+    caches.match(request).then((cached) => {
+      const network = fetch(request)
         .then((response) => {
           if (response && response.status === 200) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           }
           return response;
         })
@@ -94,24 +114,26 @@ function monthKey(d) {
 }
 
 async function runReminderCheck() {
-  const settings = (await idbGet("settings")) || {
-    reminderDay: 1,
-    midMonthNudge: false,
-    midMonthDay: 15,
-  };
+  // Never fire unless the user turned reminders on *and* granted permission.
+  if (!self.Notification || self.Notification.permission !== "granted") return;
+
+  const settings = await idbGet("settings");
+  if (!settings || !settings.remindersEnabled) return;
+
   const now = new Date();
   const thisMonth = monthKey(now);
+  let changed = false;
 
-  if (now.getDate() >= settings.reminderDay && settings.lastNewMonthShown !== thisMonth) {
-    await self.registration.showNotification("A new month, a new ten ✨", {
-      body: "Jot down 10 low-stakes things you'd like to do this month.",
+  if (now.getDate() >= (settings.reminderDay || 1) && settings.lastNewMonthShown !== thisMonth) {
+    await self.registration.showNotification("A fresh month", {
+      body: "Jot down a few small things you'd like to do. Ten is the cap, not the goal.",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       tag: "monthly10s-new-month",
       data: { url: "/" },
     });
     settings.lastNewMonthShown = thisMonth;
-    await idbSet("settings", settings);
+    changed = true;
   }
 
   if (
@@ -119,16 +141,18 @@ async function runReminderCheck() {
     now.getDate() >= (settings.midMonthDay || 15) &&
     settings.lastMidMonthShown !== thisMonth
   ) {
-    await self.registration.showNotification("Halfway through the month 👋", {
-      body: "No pressure — just a nudge in case you want to check your list.",
+    await self.registration.showNotification("Halfway there", {
+      body: "Just a nudge to peek at your list. Nothing's overdue.",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       tag: "monthly10s-mid-month",
       data: { url: "/" },
     });
     settings.lastMidMonthShown = thisMonth;
-    await idbSet("settings", settings);
+    changed = true;
   }
+
+  if (changed) await idbSet("settings", settings);
 }
 
 self.addEventListener("periodicsync", (event) => {

@@ -16,223 +16,214 @@ import {
   requestNotificationPermission,
 } from "@/lib/notifications";
 import OnboardingFlow from "@/components/OnboardingFlow";
+import Toggle from "@/components/Toggle";
+import { ChevronIcon } from "@/components/Icons";
+
+const DAY_OPTIONS = Array.from({ length: 28 }, (_, i) => i + 1);
+
+function ordinal(n: number) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
 
 export default function SettingsPage() {
-  const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [notif, setNotif] = useState<NotificationSettings | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
+  const [editing, setEditing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
     setProfile(getProfile());
     setNotif(getNotificationSettings());
     setPermission(notificationPermission());
-    setMounted(true);
   }, []);
 
-  if (!mounted || !profile || !notif) return <div className="flex-1" />;
+  if (!profile || !notif) return null;
 
-  function updateNotif(patch: Partial<NotificationSettings>) {
-    const updated = { ...notif!, ...patch };
-    saveNotificationSettings(updated);
-    setNotif(updated);
+  function update(patch: Partial<NotificationSettings>) {
+    const next = { ...notif!, ...patch };
+    saveNotificationSettings(next);
+    setNotif(next);
   }
 
   async function toggleReminders(enabled: boolean) {
-    if (enabled && notificationsSupported()) {
-      const perm = await requestNotificationPermission();
-      setPermission(perm);
-    }
-    updateNotif({ remindersEnabled: enabled });
+    if (enabled && notificationsSupported()) setPermission(await requestNotificationPermission());
+    update({ remindersEnabled: enabled });
   }
 
+  const profileSummary = summarize(profile);
+
   return (
-    <div className="flex flex-1 flex-col px-5 pt-8">
-      {showOnboarding && (
+    <>
+      {editing && (
         <OnboardingFlow
+          initial={profile}
           onComplete={(p) => {
             saveProfile(p);
             setProfile(p);
-            setShowOnboarding(false);
+            setEditing(false);
           }}
-          onSkip={() => {
-            const skipped: Profile = { onboardingComplete: true };
-            saveProfile(skipped);
-            setProfile(skipped);
-            setShowOnboarding(false);
-          }}
+          onSkip={() => setEditing(false)}
         />
       )}
 
-      <h1 className="mb-6 text-2xl font-bold">Settings</h1>
+      <header className="pb-6 pt-10">
+        <h1 className="text-[34px] font-semibold leading-none tracking-tight">Settings</h1>
+      </header>
 
-      <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink/40">Reminders</h2>
-        <div className="flex flex-col gap-3 rounded-2xl bg-white/70 p-4">
-          <ToggleRow
-            label="New-month reminder"
-            checked={notif.remindersEnabled}
-            onChange={toggleReminders}
-          />
-          {notif.remindersEnabled && (
-            <div className="flex items-center justify-between text-sm text-ink/70">
-              <span>Remind me on day</span>
-              <input
-                type="number"
-                min={1}
-                max={28}
-                value={notif.reminderDay}
-                onChange={(e) => updateNotif({ reminderDay: Number(e.target.value) || 1 })}
-                className="w-16 rounded-lg border border-black/10 px-2 py-1 text-right"
-              />
-            </div>
-          )}
-          <div className="h-px bg-black/5" />
-          <ToggleRow
-            label="One mid-month nudge"
-            checked={notif.midMonthNudge}
-            onChange={(v) => updateNotif({ midMonthNudge: v })}
-          />
-          {notif.midMonthNudge && (
-            <div className="flex items-center justify-between text-sm text-ink/70">
-              <span>Around day</span>
-              <input
-                type="number"
-                min={1}
-                max={28}
-                value={notif.midMonthDay}
-                onChange={(e) => updateNotif({ midMonthDay: Number(e.target.value) || 15 })}
-                className="w-16 rounded-lg border border-black/10 px-2 py-1 text-right"
-              />
-            </div>
-          )}
-          {permission === "denied" && (
-            <p className="text-xs text-ink/50">
-              Notifications are blocked in your browser settings — the in-app banner will still show
-              when you open the app.
-            </p>
-          )}
-          {permission === "unsupported" && (
-            <p className="text-xs text-ink/50">
-              Your browser doesn&apos;t support notifications here. On iPhone, add this app to your home
-              screen first (iOS 16.4+ required).
-            </p>
-          )}
-        </div>
-      </section>
+      <Section title="Reminders">
+        <Row label="New-month reminder" hint="One notification when it's time for a fresh list">
+          <Toggle checked={notif.remindersEnabled} onChange={toggleReminders} label="New-month reminder" />
+        </Row>
+        {notif.remindersEnabled && (
+          <Row label="On the">
+            <DaySelect value={notif.reminderDay} onChange={(d) => update({ reminderDay: d })} />
+          </Row>
+        )}
+        <Row label="Mid-month nudge" hint="One more, optional. Never daily.">
+          <Toggle checked={notif.midMonthNudge} onChange={(v) => update({ midMonthNudge: v })} label="Mid-month nudge" />
+        </Row>
+        {notif.midMonthNudge && (
+          <Row label="Around the">
+            <DaySelect value={notif.midMonthDay} onChange={(d) => update({ midMonthDay: d })} />
+          </Row>
+        )}
+        {permission === "denied" && (
+          <Note>Notifications are blocked in your browser. The in-app reminder still shows when you open the app.</Note>
+        )}
+        {permission === "unsupported" && (
+          <Note>On iPhone, add this app to your Home Screen first — notifications need that, and iOS 16.4 or later.</Note>
+        )}
+      </Section>
 
-      <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink/40">
-          Your profile (local only)
-        </h2>
-        <p className="mb-3 text-sm text-ink/60">
-          Used only to filter idea suggestions. Never leaves your device.
-        </p>
-        <div className="rounded-2xl bg-white/70 p-4 text-sm text-ink/70">
-          <ProfileSummaryRow label="Locality" value={profile.locality ?? "not set"} />
-          <ProfileSummaryRow label="Climate" value={profile.hemisphere ?? "not set"} />
-          <ProfileSummaryRow label="Kids at home" value={boolLabel(profile.hasKids)} />
-          <ProfileSummaryRow label="Has a pet" value={boolLabel(profile.hasPet)} />
-          <ProfileSummaryRow label="Prefer free activities" value={boolLabel(profile.preferFree)} />
-        </div>
-        <div className="mt-3 flex gap-2">
+      <Section title="Idea preferences" caption="Only shapes suggestions. Stays on this device.">
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="flex w-full items-center justify-between py-4 text-left transition-opacity active:opacity-60"
+        >
+          <span>
+            <span className="block text-[17px]">{profileSummary ? "Edit answers" : "Answer a few questions"}</span>
+            {profileSummary && <span className="block text-sm text-muted">{profileSummary}</span>}
+          </span>
+          <ChevronIcon size={18} className="text-muted" />
+        </button>
+        {profileSummary && (
           <button
-            onClick={() => setShowOnboarding(true)}
-            className="flex-1 rounded-full bg-tangerine py-2.5 text-sm font-semibold text-white active:scale-95"
-          >
-            Edit profile
-          </button>
-          <button
+            type="button"
             onClick={() => {
               resetProfile();
-              setProfile(getProfile());
+              setProfile({ onboardingComplete: true });
             }}
-            className="flex-1 rounded-full bg-black/5 py-2.5 text-sm font-semibold text-ink/60 active:scale-95"
+            className="w-full py-4 text-left text-[17px] text-muted transition-opacity active:opacity-60"
           >
-            Clear profile
+            Clear answers
           </button>
-        </div>
-      </section>
+        )}
+      </Section>
 
-      <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink/40">Data</h2>
-        <p className="mb-3 text-sm text-ink/60">
-          Everything is stored only on this device — your lists, archive, and profile.
-        </p>
+      <Section title="Data" caption="Lists, archive and preferences live only on this device.">
         {!confirmClear ? (
           <button
+            type="button"
             onClick={() => setConfirmClear(true)}
-            className="w-full rounded-full bg-coral/10 py-2.5 text-sm font-semibold text-coral active:scale-95"
+            className="w-full py-4 text-left text-[17px] text-accent transition-opacity active:opacity-60"
           >
-            Erase all data on this device
+            Erase everything
           </button>
         ) : (
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                clearAllData();
-                setProfile(getProfile());
-                setNotif(getNotificationSettings());
-                setConfirmClear(false);
-              }}
-              className="flex-1 rounded-full bg-coral py-2.5 text-sm font-semibold text-white active:scale-95"
-            >
-              Yes, erase everything
-            </button>
-            <button
-              onClick={() => setConfirmClear(false)}
-              className="flex-1 rounded-full bg-black/5 py-2.5 text-sm font-semibold text-ink/60 active:scale-95"
-            >
-              Cancel
-            </button>
+          <div className="flex items-center justify-between py-4">
+            <span className="text-[15px] text-muted">This can&apos;t be undone.</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmClear(false)}
+                className="rounded-full px-4 py-2 text-sm font-semibold text-fg/70"
+              >
+                Keep
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearAllData();
+                  setProfile(getProfile());
+                  setNotif(getNotificationSettings());
+                  setConfirmClear(false);
+                }}
+                className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white"
+              >
+                Erase
+              </button>
+            </div>
           </div>
         )}
-      </section>
-    </div>
+      </Section>
+    </>
   );
 }
 
-function boolLabel(v: boolean | undefined) {
-  return v === true ? "yes" : v === false ? "no" : "not set";
+function summarize(p: Profile): string | null {
+  const parts: string[] = [];
+  if (p.locality) parts.push(p.locality[0].toUpperCase() + p.locality.slice(1));
+  if (p.hemisphere) parts.push(p.hemisphere === "tropical" ? "No seasons" : `${p.hemisphere[0].toUpperCase()}${p.hemisphere.slice(1)} hemisphere`);
+  if (p.hasKids) parts.push("kids");
+  if (p.hasPet) parts.push("pet");
+  if (p.preferFree) parts.push("prefers free");
+  return parts.length ? parts.join(" · ") : null;
 }
 
-function ProfileSummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between py-1">
-      <span>{label}</span>
-      <span className="font-medium text-ink">{value}</span>
-    </div>
-  );
-}
-
-function ToggleRow({
-  label,
-  checked,
-  onChange,
+function Section({
+  title,
+  caption,
+  children,
 }: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
+  title: string;
+  caption?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <button
-      onClick={() => onChange(!checked)}
-      className="flex items-center justify-between text-left"
-    >
-      <span className="text-base font-medium">{label}</span>
-      <span
-        className={`relative h-7 w-12 rounded-full transition-colors ${
-          checked ? "bg-tangerine" : "bg-black/15"
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-            checked ? "translate-x-5" : "translate-x-0.5"
-          }`}
-        />
+    <section className="mb-8">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">{title}</h2>
+      {caption && <p className="mt-1 text-sm text-muted">{caption}</p>}
+      <div className="mt-3 divide-y divide-line border-y border-line">{children}</div>
+    </section>
+  );
+}
+
+function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-4">
+      <span className="min-w-0">
+        <span className="block text-[17px]">{label}</span>
+        {hint && <span className="block text-sm text-muted">{hint}</span>}
       </span>
-    </button>
+      {children}
+    </div>
+  );
+}
+
+function Note({ children }: { children: React.ReactNode }) {
+  return <p className="py-3 text-sm leading-relaxed text-muted">{children}</p>;
+}
+
+function DaySelect({ value, onChange }: { value: number; onChange: (d: number) => void }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label="Day of month"
+        className="appearance-none rounded-full bg-fg/5 py-2 pl-4 pr-9 text-[15px] font-medium text-fg outline-none"
+      >
+        {DAY_OPTIONS.map((d) => (
+          <option key={d} value={d}>
+            {ordinal(d)}
+          </option>
+        ))}
+      </select>
+      <ChevronIcon size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-muted" />
+    </div>
   );
 }

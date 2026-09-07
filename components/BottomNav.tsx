@@ -2,33 +2,37 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ListIcon, ArchiveIcon, SettingsIcon } from "./Icons";
 
 const TABS = [
-  { href: "/", label: "This month", icon: "📝" },
-  { href: "/archive", label: "Archive", icon: "🗂️" },
-  { href: "/settings", label: "Settings", icon: "⚙️" },
+  { href: "/", label: "Month", Icon: ListIcon },
+  { href: "/archive", label: "Archive", Icon: ArchiveIcon },
+  { href: "/settings", label: "Settings", Icon: SettingsIcon },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-stretch border-t border-black/5 bg-cream/95 backdrop-blur">
-      {TABS.map((tab) => {
-        const active = pathname === tab.href;
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={`flex flex-1 flex-col items-center gap-0.5 py-3 text-xs font-medium transition-colors ${
-              active ? "text-coral" : "text-ink/50"
-            }`}
-          >
-            <span className="text-lg leading-none">{tab.icon}</span>
-            {tab.label}
-          </Link>
-        );
-      })}
+    <nav className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/90 backdrop-blur-md">
+      <div className="mx-auto flex max-w-md">
+        {TABS.map(({ href, label, Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`flex flex-1 flex-col items-center gap-1 pb-2 pt-3 text-[11px] font-medium transition-colors ${
+                active ? "text-fg" : "text-muted"
+              }`}
+            >
+              <Icon size={22} strokeWidth={active ? 2.25 : 1.75} />
+              {label}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

@@ -2,23 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens — rgb triplets so Tailwind opacity modifiers work. */
+:root {
+  --bg: 250 249 247;
+  --fg: 28 27 26;
+  --muted: 128 123 118;
+  --line: 230 227 222;
+  --card: 255 255 255;
+  --accent: 226 96 45;
+  --accent-soft: 252 236 228;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: 18 17 16;
+    --fg: 240 238 234;
+    --muted: 138 133 127;
+    --line: 42 40 37;
+    --card: 28 27 25;
+    --accent: 240 122 74;
+    --accent-soft: 52 31 21;
+    color-scheme: dark;
+  }
+}
+
 html,
 body {
   overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  background-color: #fff8f0;
-  color: #2b2320;
+  background-color: rgb(var(--bg));
+  color: rgb(var(--fg));
 }
 
-/* Big, forgiving tap targets everywhere by default */
 button,
 [role="button"],
-input[type="checkbox"] {
+input {
   touch-action: manipulation;
 }
 
+input::placeholder {
+  color: rgb(var(--muted) / 0.7);
+}
+
 ::selection {
-  background-color: #ffd8b8;
+  background-color: rgb(var(--accent) / 0.25);
+}
+
+/* Respect the home indicator / notch when installed on iOS */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

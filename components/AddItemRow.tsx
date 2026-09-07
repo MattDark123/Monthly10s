@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PlusIcon } from "./Icons";
 
 export default function AddItemRow({
   onAdd,
@@ -18,25 +19,23 @@ export default function AddItemRow({
     setText("");
   }
 
+  if (disabled) return null;
+
   return (
-    <div className="flex items-center gap-3 rounded-2xl border-2 border-dashed border-black/10 px-3 py-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-xl text-ink/20">+</span>
+    <div className="flex min-h-[56px] items-center gap-4 py-2">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center text-fg/30">
+        <PlusIcon size={18} />
+      </span>
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && submit()}
-        placeholder={disabled ? "Your list is full — nice!" : "Add something small…"}
-        disabled={disabled}
-        className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-ink/30 disabled:cursor-not-allowed"
+        onBlur={submit}
+        enterKeyHint="done"
+        placeholder="Add something small"
+        aria-label="Add an item"
+        className="min-w-0 flex-1 bg-transparent py-1 text-[17px] leading-snug outline-none"
       />
-      {text.trim() && (
-        <button
-          onClick={submit}
-          className="shrink-0 rounded-full bg-tangerine px-3 py-1 text-sm font-semibold text-white active:scale-95"
-        >
-          Add
-        </button>
-      )}
     </div>
   );
 }

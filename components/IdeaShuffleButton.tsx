@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Idea } from "@/lib/ideas";
 import { pickIdea } from "@/lib/shuffle";
 import { Profile } from "@/lib/types";
+import { SparkIcon, CloseIcon } from "./Icons";
 
 export default function IdeaShuffleButton({
   profile,
@@ -17,46 +18,61 @@ export default function IdeaShuffleButton({
   onPick: (idea: Idea) => void;
 }) {
   const [suggestion, setSuggestion] = useState<Idea | null>(null);
+  const [seen, setSeen] = useState<string[]>([]);
 
   function shuffle() {
-    const idea = pickIdea(profile, usedIdeaIds);
+    const idea = pickIdea(profile, [...usedIdeaIds, ...seen]);
+    if (idea) setSeen((s) => [...s.slice(-20), idea.id]);
     setSuggestion(idea ?? null);
   }
 
+  if (disabled) return null;
+
+  if (!suggestion) {
+    return (
+      <button
+        type="button"
+        onClick={shuffle}
+        className="flex items-center gap-2 py-3 text-[15px] font-medium text-accent transition-opacity active:opacity-60"
+      >
+        <SparkIcon size={18} />
+        Need an idea?
+      </button>
+    );
+  }
+
   return (
-    <div className="rounded-2xl bg-tangerine/10 p-3">
-      {suggestion ? (
-        <div className="animate-fade-in space-y-2">
-          <p className="text-sm text-ink/60">Stuck? Here&apos;s an idea:</p>
-          <p className="text-base font-medium">{suggestion.text}</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                onPick(suggestion);
-                setSuggestion(null);
-              }}
-              disabled={disabled}
-              className="rounded-full bg-tangerine px-4 py-2 text-sm font-semibold text-white active:scale-95 disabled:opacity-40"
-            >
-              Add to my list
-            </button>
-            <button
-              onClick={shuffle}
-              className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink/70 active:scale-95"
-            >
-              Give me another
-            </button>
-          </div>
-        </div>
-      ) : (
+    <div className="animate-fade-up rounded-2xl bg-accent-soft p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[17px] leading-snug text-fg">{suggestion.text}</p>
         <button
-          onClick={shuffle}
-          disabled={disabled}
-          className="flex w-full items-center justify-center gap-2 py-1 text-sm font-semibold text-tangerine disabled:opacity-40"
+          type="button"
+          onClick={() => setSuggestion(null)}
+          aria-label="Close suggestion"
+          className="-mr-1 -mt-1 shrink-0 p-1 text-muted"
         >
-          🎲 Stuck? Tap for an idea
+          <CloseIcon size={18} />
         </button>
-      )}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            onPick(suggestion);
+            setSuggestion(null);
+          }}
+          className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition-transform active:scale-95"
+        >
+          Add it
+        </button>
+        <button
+          type="button"
+          onClick={shuffle}
+          className="rounded-full px-4 py-2 text-sm font-semibold text-fg/70 transition-opacity active:opacity-60"
+        >
+          Another
+        </button>
+      </div>
     </div>
   );
 }
