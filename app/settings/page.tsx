@@ -7,9 +7,11 @@ import {
   resetProfile,
   getNotificationSettings,
   saveNotificationSettings,
+  getPreferences,
+  savePreferences,
   clearAllData,
 } from "@/lib/storage";
-import { Profile, NotificationSettings } from "@/lib/types";
+import { Profile, NotificationSettings, Preferences, Layout } from "@/lib/types";
 import {
   notificationPermission,
   notificationsSupported,
@@ -30,6 +32,7 @@ function ordinal(n: number) {
 export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [notif, setNotif] = useState<NotificationSettings | null>(null);
+  const [prefs, setPrefs] = useState<Preferences | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const [editing, setEditing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -37,10 +40,11 @@ export default function SettingsPage() {
   useEffect(() => {
     setProfile(getProfile());
     setNotif(getNotificationSettings());
+    setPrefs(getPreferences());
     setPermission(notificationPermission());
   }, []);
 
-  if (!profile || !notif) return null;
+  if (!profile || !notif || !prefs) return null;
 
   function update(patch: Partial<NotificationSettings>) {
     const next = { ...notif!, ...patch };
@@ -72,6 +76,34 @@ export default function SettingsPage() {
       <header className="pb-6 pt-10">
         <h1 className="text-[34px] font-semibold leading-none tracking-tight">Settings</h1>
       </header>
+
+      <Section title="Layout" caption="How this month's list is shown.">
+        <div className="flex items-center justify-between py-4">
+          <span className="text-[17px]">Show as</span>
+          <div className="flex overflow-hidden rounded-full border border-line">
+            {(
+              [
+                { v: "list", l: "List" },
+                { v: "card", l: "Bingo card" },
+              ] as { v: Layout; l: string }[]
+            ).map(({ v, l }) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => {
+                  savePreferences({ ...prefs!, layout: v });
+                  setPrefs({ ...prefs!, layout: v });
+                }}
+                className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                  prefs.layout === v ? "bg-fg text-bg" : "text-muted"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Section>
 
       <Section title="Reminders">
         <Row label="New-month reminder" hint="One notification when it's time for a fresh list">
@@ -150,6 +182,7 @@ export default function SettingsPage() {
                   clearAllData();
                   setProfile(getProfile());
                   setNotif(getNotificationSettings());
+                  setPrefs(getPreferences());
                   setConfirmClear(false);
                 }}
                 className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white"

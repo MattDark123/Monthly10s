@@ -1,4 +1,12 @@
-import { MonthList, Profile, NotificationSettings, ListItem, Category, MAX_ITEMS } from "./types";
+import {
+  MonthList,
+  Profile,
+  NotificationSettings,
+  ListItem,
+  Category,
+  Preferences,
+  MAX_ITEMS,
+} from "./types";
 import { monthKey } from "./date";
 import { idbSet } from "./idb";
 
@@ -13,6 +21,7 @@ const KEYS = {
   months: "monthly10s:months", // { [monthKey]: MonthList }
   profile: "monthly10s:profile",
   notifications: "monthly10s:notifications",
+  prefs: "monthly10s:prefs",
 };
 
 function isBrowser() {
@@ -188,9 +197,22 @@ export function saveNotificationSettings(settings: NotificationSettings): void {
   void idbSet("settings", settings);
 }
 
+// ---- Preferences (layout etc.) ----
+
+const defaultPreferences: Preferences = { layout: "list" };
+
+export function getPreferences(): Preferences {
+  return { ...defaultPreferences, ...readJson<Partial<Preferences>>(KEYS.prefs, {}) };
+}
+
+export function savePreferences(prefs: Preferences): void {
+  writeJson(KEYS.prefs, prefs);
+}
+
 export function clearAllData(): void {
   if (!isBrowser()) return;
   window.localStorage.removeItem(KEYS.months);
   window.localStorage.removeItem(KEYS.profile);
   window.localStorage.removeItem(KEYS.notifications);
+  window.localStorage.removeItem(KEYS.prefs);
 }

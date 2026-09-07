@@ -52,4 +52,12 @@ export interface NotificationSettings {
   lastMidMonthShown?: string;
 }
 
+export type Layout = "list" | "card";
+
+export interface Preferences {
+  layout: Layout;
+}
+
 export const MAX_ITEMS = 10;
+/** Item tiles on the bingo card (3x3 minus the free centre square). */
+export const CARD_SLOTS = 8;
