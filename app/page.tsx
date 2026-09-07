@@ -12,6 +12,8 @@ import {
   deleteItem,
   setItemCategory,
   getArchive,
+  getPreferences,
+  savePreferences,
 } from "@/lib/storage";
 import {
   shouldShowNewMonthBanner,
@@ -19,15 +21,17 @@ import {
   shouldShowMidMonthBanner,
   dismissMidMonthBanner,
 } from "@/lib/notifications";
-import { MonthList, Profile, MAX_ITEMS } from "@/lib/types";
+import { MonthList, Profile, Layout, MAX_ITEMS } from "@/lib/types";
 import { monthKey, monthName, nextMonthKey, monthDate } from "@/lib/date";
 import { Idea } from "@/lib/ideas";
 import ListItemRow from "@/components/ListItemRow";
 import AddItemRow from "@/components/AddItemRow";
+import BingoCard from "@/components/BingoCard";
 import ProgressDots from "@/components/ProgressDots";
 import IdeaShuffleButton from "@/components/IdeaShuffleButton";
 import ReminderBanner from "@/components/ReminderBanner";
 import OnboardingFlow from "@/components/OnboardingFlow";
+import { GridIcon } from "@/components/Icons";
 
 function doneLine(done: number, total: number): string | null {
   if (total === 0) return null;
@@ -49,6 +53,7 @@ type View = "current" | "next";
 
 export default function HomePage() {
   const [view, setView] = useState<View>("current");
+  const [layout, setLayout] = useState<Layout>("list");
   const [list, setList] = useState<MonthList | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [hasArchive, setHasArchive] = useState(false);
@@ -63,6 +68,7 @@ export default function HomePage() {
     const p = getProfile();
     setProfile(p);
     setShowOnboarding(!p.onboardingComplete);
+    setLayout(getPreferences().layout);
     setHasArchive(getArchive().length > 0);
     if (shouldShowNewMonthBanner()) setBanner("new");
     else if (shouldShowMidMonthBanner()) setBanner("mid");
@@ -75,6 +81,8 @@ export default function HomePage() {
   if (!list || !profile) return null;
 
   const isPlan = view === "next";
+  const isCard = layout === "card";
+  const mode = isPlan ? "plan" : "current";
   const done = list.items.filter((i) => i.done).length;
   const full = list.items.length >= MAX_ITEMS;
   const usedIdeaIds = list.items.map((i) => i.ideaId).filter((x): x is string => !!x);
@@ -84,6 +92,12 @@ export default function HomePage() {
     saveProfile(p);
     setProfile(p);
     setShowOnboarding(false);
+  }
+
+  function flipLayout() {
+    const next: Layout = isCard ? "list" : "card";
+    savePreferences({ ...getPreferences(), layout: next });
+    setLayout(next);
   }
 
   function addIdea(idea: Idea) {
@@ -104,13 +118,24 @@ export default function HomePage() {
           <h1 key={key} className="animate-fade-in text-[34px] font-semibold leading-none tracking-tight">
             {monthName(key)}
           </h1>
-          <button
-            type="button"
-            onClick={() => setView(isPlan ? "current" : "next")}
-            className="shrink-0 text-[15px] font-medium text-accent transition-opacity active:opacity-60"
-          >
-            {isPlan ? `← ${monthName(currentKey)}` : `${monthName(nextKey)} →`}
-          </button>
+          <div className="flex shrink-0 items-center gap-4">
+            <button
+              type="button"
+              onClick={flipLayout}
+              aria-label={isCard ? "Show as a list" : "Show as a bingo card"}
+              aria-pressed={isCard}
+              className={`self-center transition-colors ${isCard ? "text-fg" : "text-muted"}`}
+            >
+              <GridIcon size={20} strokeWidth={isCard ? 2.25 : 1.75} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setView(isPlan ? "current" : "next")}
+              className="text-[15px] font-medium text-accent transition-opacity active:opacity-60"
+            >
+              {isPlan ? `← ${monthName(currentKey)}` : `${monthName(nextKey)} →`}
+            </button>
+          </div>
         </div>
         <div className="mt-4 flex items-center justify-between gap-4">
           <p className="text-[15px] text-muted">{subtitle ?? "Ten small things, no pressure."}</p>
@@ -145,23 +170,37 @@ export default function HomePage() {
         />
       )}
 
-      <ul className="border-t border-line">
-        {list.items.map((item, i) => (
-          <ListItemRow
-            key={item.id}
-            item={item}
-            index={i}
-            mode={isPlan ? "plan" : "current"}
-            onToggle={() => setList(toggleItem(key, item.id))}
-            onEdit={(text) => setList(updateItemText(key, item.id, text))}
-            onDelete={() => setList(deleteItem(key, item.id))}
-            onCategory={(c) => setList(setItemCategory(key, item.id, c))}
-          />
-        ))}
-        <li className={full ? "" : "border-b border-line"}>
-          <AddItemRow disabled={full} onAdd={(text) => setList(addItem(key, text))} />
-        </li>
-      </ul>
+      {isCard ? (
+        <BingoCard
+          key={key}
+          items={list.items}
+          mode={mode}
+          full={full}
+          onToggle={(id) => setList(toggleItem(key, id))}
+          onAdd={(text) => setList(addItem(key, text))}
+          onEdit={(id, text) => setList(updateItemText(key, id, text))}
+          onDelete={(id) => setList(deleteItem(key, id))}
+          onCategory={(id, c) => setList(setItemCategory(key, id, c))}
+        />
+      ) : (
+        <ul className="border-t border-line">
+          {list.items.map((item, i) => (
+            <ListItemRow
+              key={item.id}
+              item={item}
+              index={i}
+              mode={mode}
+              onToggle={() => setList(toggleItem(key, item.id))}
+              onEdit={(text) => setList(updateItemText(key, item.id, text))}
+              onDelete={() => setList(deleteItem(key, item.id))}
+              onCategory={(c) => setList(setItemCategory(key, item.id, c))}
+            />
+          ))}
+          <li className={full ? "" : "border-b border-line"}>
+            <AddItemRow disabled={full} onAdd={(text) => setList(addItem(key, text))} />
+          </li>
+        </ul>
+      )}
 
       <div className="mt-3">
         <IdeaShuffleButton
@@ -173,7 +212,7 @@ export default function HomePage() {
         />
       </div>
 
-      {list.items.length === 0 && (
+      {list.items.length === 0 && !isCard && (
         <div className="mt-14 text-center">
           <p className="text-[15px] leading-relaxed text-muted">
             {isPlan ? (

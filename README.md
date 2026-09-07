@@ -13,6 +13,11 @@ login, no backend, no cost.
 ## Features
 
 - Up to 10 items per month, inline add/edit/delete, big tap targets.
+- Two layouts, switchable from the Month header or Settings: a plain list,
+  or a 3x3 bingo card with a free centre square. Tap a tile to tick it,
+  hold to edit. Completing a line gets a quiet word of encouragement; a
+  full house gets a brief burst of confetti (skipped under
+  `prefers-reduced-motion`).
 - "Stuck? Tap for an idea" — a bank of ~100 low-stakes ideas, tagged by
   kid-friendliness, setting, cost, and season.
 - An optional, fully skippable local-only profile (locality, climate,

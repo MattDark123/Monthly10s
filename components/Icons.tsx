@@ -80,6 +80,25 @@ export function ChevronIcon(p: IconProps) {
   );
 }
 
+export function GridIcon(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+    </svg>
+  );
+}
+
+export function RowsIcon(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
 export function PlusIcon(p: IconProps) {
   return (
     <svg {...base(p)}>

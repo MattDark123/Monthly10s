@@ -61,11 +61,28 @@ input::placeholder {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* Full-house particles. Set via inline `animation` in BingoCard, so the
+   keyframes live here rather than in the Tailwind config (which only emits
+   keyframes referenced by an animate-* utility). */
+@keyframes burst {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--r)) scale(0.6);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+  .burst {
+    display: none;
   }
 }
