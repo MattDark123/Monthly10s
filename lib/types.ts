@@ -34,6 +34,8 @@ export interface ListItem {
   ideaId?: string;
   /** Explicit theme chosen by the user. Absent = auto-detected at read time. */
   category?: Category;
+  /** Month key this item was carried over from, if it rolled forward unfinished. */
+  carriedFrom?: string;
 }
 
 /** A month's list, keyed by "YYYY-MM". */
@@ -41,6 +43,8 @@ export interface MonthList {
   monthKey: string;
   items: ListItem[];
   updatedAt: string;
+  /** Set once unfinished items have been carried forward (or let go). */
+  rolloverHandled?: boolean;
 }
 
 export interface NotificationSettings {
@@ -54,8 +58,12 @@ export interface NotificationSettings {
 
 export type Layout = "list" | "card";
 
+/** What happens to unfinished items when a new month starts. */
+export type Rollover = "auto" | "ask" | "never";
+
 export interface Preferences {
   layout: Layout;
+  rollover: Rollover;
 }
 
 export const MAX_ITEMS = 10;

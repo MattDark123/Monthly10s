@@ -25,6 +25,11 @@ login, no backend, no cost.
   blocks a manually typed item and is never sent anywhere.
 - A new-month banner + a real local notification, plus one optional
   mid-month nudge (never more).
+- Unfinished items can roll forward. By default anything unticked at the
+  end of a month joins the next month's list on first open (a banner says
+  what came along); Settings can switch that to "ask me" (pick which ones)
+  or "let go". The old month is left as it was, so the look-back stays
+  honest, and only the immediately previous month is ever considered.
 - Plan next month from inside this one: a small switch on the Month tab
   opens next month's list, and it simply becomes the current list when the
   month rolls over.

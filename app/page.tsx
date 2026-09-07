@@ -14,15 +14,19 @@ import {
   getArchive,
   getPreferences,
   savePreferences,
+  carryItems,
+  markRolloverHandled,
 } from "@/lib/storage";
+import { settleRollover, RolloverResult } from "@/lib/rollover";
+import RolloverPrompt from "@/components/RolloverPrompt";
 import {
   shouldShowNewMonthBanner,
   dismissNewMonthBanner,
   shouldShowMidMonthBanner,
   dismissMidMonthBanner,
 } from "@/lib/notifications";
-import { MonthList, Profile, Layout, MAX_ITEMS } from "@/lib/types";
-import { monthKey, monthName, nextMonthKey, monthDate } from "@/lib/date";
+import { MonthList, ListItem, Profile, Layout, MAX_ITEMS } from "@/lib/types";
+import { monthKey, monthName, nextMonthKey, previousMonthKey, monthDate } from "@/lib/date";
 import { Idea } from "@/lib/ideas";
 import ListItemRow from "@/components/ListItemRow";
 import AddItemRow from "@/components/AddItemRow";
@@ -49,6 +53,27 @@ function planLine(count: number): string {
   return `${count} lined up so far.`;
 }
 
+function carriedLine(added: number, skipped: number): string {
+  const things = (n: number) => `${n} ${n === 1 ? "thing" : "things"}`;
+  if (added === 0) return `Nothing came along — ${things(skipped)} ${skipped === 1 ? "was" : "were"} already here or didn't fit.`;
+  let s = `${things(added)} you didn't get to came with you. Drop any you're done with.`;
+  if (skipped > 0) s += ` ${things(skipped)} didn't fit.`;
+  return s;
+}
+
+function freshMonthLine(items: ListItem[], currentKey: string): string {
+  const prev = previousMonthKey(currentKey);
+  const carried = items.filter((i) => i.carriedFrom === prev).length;
+  const planned = items.length - carried;
+  const things = (n: number) => `${n} ${n === 1 ? "thing" : "things"}`;
+  if (planned > 0 && carried > 0) {
+    return `${things(planned)} you planned and ${carried} from ${monthName(prev)} are already here.`;
+  }
+  if (carried > 0) return `${things(carried)} from ${monthName(prev)} came along. Add anything new.`;
+  if (planned > 0) return `You lined up ${things(planned)} for ${monthName(currentKey)}. Here they are.`;
+  return "Jot down a few things you'd like to do. Ten is the cap, not the goal.";
+}
+
 type View = "current" | "next";
 
 export default function HomePage() {
@@ -59,6 +84,7 @@ export default function HomePage() {
   const [hasArchive, setHasArchive] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [banner, setBanner] = useState<"new" | "mid" | null>(null);
+  const [rollover, setRollover] = useState<RolloverResult>(null);
 
   const currentKey = monthKey();
   const nextKey = nextMonthKey(currentKey);
@@ -69,6 +95,9 @@ export default function HomePage() {
     setProfile(p);
     setShowOnboarding(!p.onboardingComplete);
     setLayout(getPreferences().layout);
+    // Carry last month's unfinished items forward (per the setting) before
+    // the list loads, so they're already on it.
+    setRollover(settleRollover());
     setHasArchive(getArchive().length > 0);
     if (shouldShowNewMonthBanner()) setBanner("new");
     else if (shouldShowMidMonthBanner()) setBanner("mid");
@@ -143,16 +172,32 @@ export default function HomePage() {
         </div>
       </header>
 
+      {!isPlan && rollover?.kind === "ask" && (
+        <RolloverPrompt
+          from={rollover.from}
+          items={rollover.items}
+          onCarry={(ids) => {
+            const { added, skipped } = carryItems(rollover.from, currentKey, ids);
+            setList(getMonth(currentKey));
+            setRollover({ kind: "carried", from: rollover.from, added, skipped });
+          }}
+          onLetGo={() => {
+            markRolloverHandled(rollover.from);
+            setRollover(null);
+          }}
+        />
+      )}
+      {!isPlan && rollover?.kind === "carried" && rollover.added + rollover.skipped > 0 && (
+        <ReminderBanner
+          title={`Along from ${monthName(rollover.from)}`}
+          body={carriedLine(rollover.added, rollover.skipped)}
+          onDismiss={() => setRollover(null)}
+        />
+      )}
       {!isPlan && banner === "new" && (
         <ReminderBanner
           title="A fresh month"
-          body={
-            list.items.length > 0
-              ? `You lined up ${list.items.length} ${list.items.length === 1 ? "thing" : "things"} for ${monthName(
-                  currentKey
-                )}. Here they are.`
-              : "Jot down a few things you'd like to do. Ten is the cap, not the goal."
-          }
+          body={freshMonthLine(list.items, currentKey)}
           onDismiss={() => {
             dismissNewMonthBanner();
             setBanner(null);

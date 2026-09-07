@@ -11,7 +11,7 @@ import {
   savePreferences,
   clearAllData,
 } from "@/lib/storage";
-import { Profile, NotificationSettings, Preferences, Layout } from "@/lib/types";
+import { Profile, NotificationSettings, Preferences, Layout, Rollover } from "@/lib/types";
 import {
   notificationPermission,
   notificationsSupported,
@@ -80,28 +80,42 @@ export default function SettingsPage() {
       <Section title="Layout" caption="How this month's list is shown.">
         <div className="flex items-center justify-between py-4">
           <span className="text-[17px]">Show as</span>
-          <div className="flex overflow-hidden rounded-full border border-line">
-            {(
-              [
-                { v: "list", l: "List" },
-                { v: "card", l: "Bingo card" },
-              ] as { v: Layout; l: string }[]
-            ).map(({ v, l }) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => {
-                  savePreferences({ ...prefs!, layout: v });
-                  setPrefs({ ...prefs!, layout: v });
-                }}
-                className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-                  prefs.layout === v ? "bg-fg text-bg" : "text-muted"
-                }`}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
+          <Segmented<Layout>
+            value={prefs.layout}
+            options={[
+              { v: "list", l: "List" },
+              { v: "card", l: "Bingo card" },
+            ]}
+            onChange={(v) => {
+              savePreferences({ ...prefs!, layout: v });
+              setPrefs({ ...prefs!, layout: v });
+            }}
+          />
+        </div>
+      </Section>
+
+      <Section
+        title="Unfinished items"
+        caption="What happens to things you didn't get to when a new month starts."
+      >
+        <div className="flex flex-col gap-3 py-4">
+          <Segmented<Rollover>
+            value={prefs.rollover}
+            options={[
+              { v: "auto", l: "Carry over" },
+              { v: "ask", l: "Ask me" },
+              { v: "never", l: "Let go" },
+            ]}
+            onChange={(v) => {
+              savePreferences({ ...prefs!, rollover: v });
+              setPrefs({ ...prefs!, rollover: v });
+            }}
+          />
+          <p className="text-sm text-muted">
+            {prefs.rollover === "auto" && "They join the new list on their own. Drop any you're done with."}
+            {prefs.rollover === "ask" && "You'll pick which ones come along."}
+            {prefs.rollover === "never" && "Each month starts clean. Last month stays as it was."}
+          </p>
         </div>
       </Section>
 
@@ -233,6 +247,34 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
         {hint && <span className="block text-sm text-muted">{hint}</span>}
       </span>
       {children}
+    </div>
+  );
+}
+
+function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { v: T; l: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="flex self-start overflow-hidden rounded-full border border-line">
+      {options.map(({ v, l }) => (
+        <button
+          key={v}
+          type="button"
+          aria-pressed={value === v}
+          onClick={() => onChange(v)}
+          className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+            value === v ? "bg-fg text-bg" : "text-muted"
+          }`}
+        >
+          {l}
+        </button>
+      ))}
     </div>
   );
 }
