@@ -6,7 +6,7 @@ import { ListIcon, ArchiveIcon, SettingsIcon } from "./Icons";
 
 const TABS = [
   { href: "/", label: "Month", Icon: ListIcon },
-  { href: "/archive", label: "Archive", Icon: ArchiveIcon },
+  { href: "/archive", label: "Look back", Icon: ArchiveIcon },
   { href: "/settings", label: "Settings", Icon: SettingsIcon },
 ];
 

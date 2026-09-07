@@ -11,6 +11,20 @@ export interface Profile {
   onboardingComplete: boolean;
 }
 
+/** Themes an item can belong to. Detected locally from the text (see
+ * lib/categories.ts); the user can override per item. */
+export type Category =
+  | "social"
+  | "active"
+  | "food"
+  | "nature"
+  | "rest"
+  | "learning"
+  | "creative"
+  | "explore"
+  | "play"
+  | "other";
+
 export interface ListItem {
   id: string;
   text: string;
@@ -18,6 +32,8 @@ export interface ListItem {
   createdAt: string;
   /** id of the idea-bank entry this item was added from, if any */
   ideaId?: string;
+  /** Explicit theme chosen by the user. Absent = auto-detected at read time. */
+  category?: Category;
 }
 
 /** A month's list, keyed by "YYYY-MM". */
