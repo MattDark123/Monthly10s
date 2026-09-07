@@ -99,6 +99,26 @@ export function RowsIcon(p: IconProps) {
   );
 }
 
+export function PeopleIcon(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 19c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M16 13.5c3 0 5.5 1.9 5.5 4.8" />
+    </svg>
+  );
+}
+
+export function LinkIcon(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5" />
+      <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5" />
+    </svg>
+  );
+}
+
 export function PlusIcon(p: IconProps) {
   return (
     <svg {...base(p)}>

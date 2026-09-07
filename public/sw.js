@@ -14,8 +14,16 @@
 // the in-app banner shown on next open, plus a notification fired the moment
 // the app is opened on/after the reminder day.
 
-const CACHE_NAME = "monthly10s-shell-v2";
-const APP_SHELL = ["/", "/archive", "/settings", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE_NAME = "monthly10s-shell-v3";
+const APP_SHELL = [
+  "/",
+  "/archive",
+  "/friends",
+  "/settings",
+  "/manifest.json",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
